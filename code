@@ -1,0 +1,59 @@
+#![no_std]
+#![no_main]
+
+use core::default::Default;
+use contract_derive::contract;
+use eth_riscv_runtime::types::Mapping;
+use alloy_core::primitives::Address;
+
+#[derive(Default)]
+pub struct ERC20 {
+    balance: Mapping<Address, u64>,
+}
+
+#[contract]
+impl ERC20 {
+    pub fn balance_of(&self, owner: Address) -> u64 {
+        self.balance.read(owner)
+    }
+
+    pub fn transfer(&self, from: Address, to: Address, value: u64) {
+        let from_balance = self.balance.read(from);
+        let to_balance = self.balance.read(to);
+
+        // Check for overflow and balance
+        if from == to || from_balance < value {
+            revert();
+        }
+
+        // Using checked_sub and checked_add for safety
+        let new_from_balance = from_balance.checked_sub(value).expect("Overflow error on subtraction");
+        let new_to_balance = to_balance.checked_add(value).expect("Overflow error on addition");
+
+        self.balance.write(from, new_from_balance);
+        self.balance.write(to, new_to_balance);
+
+        // Emit event
+        emit_transfer_event(from, to, value);
+    }
+
+    pub fn mint(&self, to: Address, value: u64) {
+        let to_balance = self.balance.read(to);
+
+        // Check for overflow
+        let new_to_balance = to_balance.checked_add(value).expect("Overflow error on addition");
+
+        self.balance.write(to, new_to_balance);
+
+        // Emit event
+        emit_mint_event(to, value);
+    }
+
+    fn emit_transfer_event(from: Address, to: Address, value: u64) {
+        // Logic to emit transfer event
+    }
+
+    fn emit_mint_event(to: Address, value: u64) {
+        // Logic to emit mint event
+    }
+}
